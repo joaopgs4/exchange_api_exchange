@@ -15,4 +15,4 @@ app.add_middleware(
 
 @app.get("/")
 def read_root():
-    return {"message": "Microservice is up!"}
+    return {"message": "Exchange microservice is up!"}

@@ -38,7 +38,7 @@ async def convert_currency(currency1: str, currency2: str,
             "sell": exchange_rate["high"],
             "buy": exchange_rate["low"],
             "date": exchange_rate["create_date"],
-            "id_account": cookie.user_id
+            "id_account": cookie.id
         }
         return response
 
