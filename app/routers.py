@@ -4,12 +4,15 @@ from fastapi.responses import JSONResponse
 from fastapi.encoders import jsonable_encoder
 from sqlalchemy.orm import Session
 from middleware import *
+import requests
 from typing import Optional
 
 router = APIRouter(
-    prefix="/route",
-    tags=["route"]
+    prefix="/exchange",
+    tags=["exchange"]
 )
+
+API_URL = "https://economia.awesomeapi.com.br/json/last/"
 
 ###################################
 ##### Routers Functions Below #####
@@ -20,37 +23,25 @@ router = APIRouter(
 async def root_func():
     return {"message": "Root function ran!"}
 
-#Function for token test and debbugin. Simply receives a token, reads it and returns a new token
-#Input: Http/Https request
-#Output: Http/Https request containing a new cookie
-@router.get("/debug/token")
-async def token_debug(
-    request: Request,
-    cookie: AuthToken = Depends(get_cookie_as_model)  # Decoded cookie (JWT payload)
-):
+@router.get("/{currency1}/{currency2}", status_code=200)
+async def convert_currency(currency1: str, currency2: str, 
+                           cookie: AuthToken = Depends(get_cookie_as_model)):
     try:
-        cookie_data = cookie.dict() #Converts from AuthToken to dict
-        cookie_data["debugged"] = True #Adds "debug" field
-
-        # Create a new token with fresh expiry and the debug flag
-        new_token = make_cookie_from_dict(cookie_data)
-
-        # Set the debug cookie
-        response = JSONResponse(
-            content={
-                "valid": True,
-                "token_payload": cookie_data
-            }
-        )
-        response.set_cookie(
-            key="debug_test_token",
-            value=new_token,
-            httponly=True,
-            secure=True,
-            samesite="lax"
-        )
-
+        exchange_rate = requests.get(API_URL + f"{currency1}-{currency2}")
+        if not exchange_rate:
+            raise HTTPException(400, detail="Erro ao realizar request de exchange")
+        if exchange_rate.status_code != 200:
+            raise HTTPException(status_code=exchange_rate.status_code, detail=exchange_rate.json().get("detail"))
+        
+        exchange_rate = exchange_rate.json()[f"{currency1}{currency2}"]
+        response = {
+            "sell": exchange_rate["high"],
+            "buy": exchange_rate["low"],
+            "date": exchange_rate["create_date"],
+            "id_account": cookie.user_id
+        }
         return response
+
 
     except HTTPException as e:
         raise e
